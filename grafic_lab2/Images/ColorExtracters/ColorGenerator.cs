@@ -15,6 +15,7 @@ public static class RGBColorCreator
         byte red = (byte)_random.Next(1, 256);
         byte green = (byte)_random.Next(1, 256);
         byte blue = (byte)_random.Next(1, 256);
+
         return Color.FromArgb(255, red, green, blue);
     }
 }

@@ -208,7 +208,6 @@ public class PGSimage : IBitmatable
         {
             for (byte j = 0; j < palate[i].Length; j++)
             {
-                // 2 потому что
                 res.TryAdd(palate[i][j], (byte)((i << offset) | j));
             }
         }

@@ -35,8 +35,6 @@ namespace grafic_lab2.Images.ColorExtracters
             Marshal.Copy(image_data.Scan0, buffer, 0, bytes);
             image.UnlockBits(image_data);
 
-            // биты для формирования итогого изображения
-//            byte[] result = new byte[bytes];
             // палитра
             Color[] means = new Color[clusters];
 
@@ -75,13 +73,6 @@ namespace grafic_lab2.Images.ColorExtracters
                     {
                         double temp = Distance(means[j], cur);
 
-                        //double temp = Math.Sqrt(
-                        //    (buffer[i + 2] - means[j].R) * (buffer[i + 2] - means[j].R)
-                        //     + (buffer[i + 1] - means[j].G) * (buffer[i + 1] - means[j].G)
-                        //     + (buffer[i] - means[j].B) * (buffer[i] - means[j].B)
-                        //);
-
-
                         if (norm > temp)
                         {
                             norm = temp;
@@ -90,10 +81,6 @@ namespace grafic_lab2.Images.ColorExtracters
                     }
 
                     samples[cluster].Add(cur);
-
-                    //result[i + 2] = means[cluster].R;
-                    //result[i + 1] = means[cluster].G;
-                    //result[i] = means[cluster].B;
                 }
 
                 Color[] new_means = new Color[clusters];

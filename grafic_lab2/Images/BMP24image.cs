@@ -30,7 +30,7 @@ public class BMP24image : IBitmatable
                 int align = (4 * ((bytes + 3) / 4)) - bytes;
 
                 //определение размеров пиксельных данных и строки
-                res._data = new byte[res._inforHeader.BitPerPixel / 8 * (int)res._inforHeader.ImgWidth * (int)res._inforHeader.ImgHeight ];
+                res._data = new byte[res._inforHeader.BitPerPixel / 8 * (int)res._inforHeader.ImgWidth * (int)res._inforHeader.ImgHeight];
 
                 //цикл: последовательное считывание строк изображения
                 for (int line = 0; line < res._inforHeader.ImgHeight; line++)
@@ -48,7 +48,7 @@ public class BMP24image : IBitmatable
             }
             else
             {
-                throw new InvalidDataException("это не bmp24");
+                throw new InvalidDataException("это не bmp");
             }
         }
 
@@ -71,52 +71,52 @@ public class BMP24image : IBitmatable
 
         return res;
     }
-}
 
-public struct Header
-{
-    public ushort FileType; //определяет сигнатуру файла
-    public uint FileSize; //размер всего файла
-    public ushort Reserved1; //зарезервировано
-    public ushort Reserved2; //зарезервировано
-    public uint DataOffset; //смещение пиксельных данных
-
-    public void ReadFrom(BinaryReader binaryReader)
+    public struct Header
     {
-        FileType = binaryReader.ReadUInt16();
-        FileSize = binaryReader.ReadUInt32();
-        Reserved1 = binaryReader.ReadUInt16();
-        Reserved2 = binaryReader.ReadUInt16();
-        DataOffset = binaryReader.ReadUInt32();
+        public ushort FileType; //определяет сигнатуру файла
+        public uint FileSize; //размер всего файла
+        public ushort Reserved1; //зарезервировано
+        public ushort Reserved2; //зарезервировано
+        public uint DataOffset; //смещение пиксельных данных
+
+        public void ReadFrom(BinaryReader binaryReader)
+        {
+            FileType = binaryReader.ReadUInt16();
+            FileSize = binaryReader.ReadUInt32();
+            Reserved1 = binaryReader.ReadUInt16();
+            Reserved2 = binaryReader.ReadUInt16();
+            DataOffset = binaryReader.ReadUInt32();
+        }
     }
-}
 
-public struct InforHeader
-{
-    public uint StructSize; //размер этой структуры
-    public uint ImgWidth; //ширина изображения в пикселях
-    public uint ImgHeight; //высота изображения в пикселях
-    public ushort ColorPlanes; //количество цветовых плоскостей
-    public ushort BitPerPixel; //количество битов на пиксель
-    public uint Compression;//определяет тип сжатия
-    public uint ImageSize; //размер непосредственного изображения
-    public uint DPIX; //количество пикселей на единицу расстояния
-    public uint DPIY; //количество пикселей на единицу расстояния
-    public uint Colors; //размер таблицы цветов
-    public uint ColorsUsed; //количество задействованных цветов
-
-    public void ReadFrom(BinaryReader binaryReader)
+    public struct InforHeader
     {
-        StructSize = binaryReader.ReadUInt32();
-        ImgWidth = binaryReader.ReadUInt32();
-        ImgHeight = binaryReader.ReadUInt32();
-        ColorPlanes = binaryReader.ReadUInt16();
-        BitPerPixel = binaryReader.ReadUInt16();
-        Compression = binaryReader.ReadUInt32();
-        ImageSize = binaryReader.ReadUInt32();
-        DPIX = binaryReader.ReadUInt32();
-        DPIY = binaryReader.ReadUInt32();
-        Colors = binaryReader.ReadUInt32();
-        ColorsUsed = binaryReader.ReadUInt32();
+        public uint StructSize; //размер этой структуры
+        public uint ImgWidth; //ширина изображения в пикселях
+        public uint ImgHeight; //высота изображения в пикселях
+        public ushort ColorPlanes; //количество цветовых плоскостей
+        public ushort BitPerPixel; //количество битов на пиксель
+        public uint Compression;//определяет тип сжатия
+        public uint ImageSize; //размер непосредственного изображения
+        public uint DPIX; //количество пикселей на единицу расстояния
+        public uint DPIY; //количество пикселей на единицу расстояния
+        public uint Colors; //размер таблицы цветов
+        public uint ColorsUsed; //количество задействованных цветов
+
+        public void ReadFrom(BinaryReader binaryReader)
+        {
+            StructSize = binaryReader.ReadUInt32();
+            ImgWidth = binaryReader.ReadUInt32();
+            ImgHeight = binaryReader.ReadUInt32();
+            ColorPlanes = binaryReader.ReadUInt16();
+            BitPerPixel = binaryReader.ReadUInt16();
+            Compression = binaryReader.ReadUInt32();
+            ImageSize = binaryReader.ReadUInt32();
+            DPIX = binaryReader.ReadUInt32();
+            DPIY = binaryReader.ReadUInt32();
+            Colors = binaryReader.ReadUInt32();
+            ColorsUsed = binaryReader.ReadUInt32();
+        }
     }
 }
