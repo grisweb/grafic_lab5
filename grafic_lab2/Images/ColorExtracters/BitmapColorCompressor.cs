@@ -1,48 +1,36 @@
-﻿using System.Drawing.Imaging;
-using System.Runtime.InteropServices;
-
-namespace grafic_lab2.Images.ColorExtracters
+﻿namespace grafic_lab2.Images.ColorExtracters
 {
-    public class BitmapColorCompressor
+    public class BMP24imageColorCompressor
     {
         public Color[]? Palette { get; private set; }
         public Dictionary<Color, Color>? CompressedColors { get; private set; }
 
-        Bitmap image;
-        int clusters;
+        private BMP24image _image;
+        private int _clusters;
 
-        public BitmapColorCompressor(Bitmap image, int clusters)
+        public BMP24imageColorCompressor(BMP24image image, int clusters)
         {
-            this.image = image;
-            this.clusters = clusters;
+            _image = image;
+            _clusters = clusters;
         }
 
         public void Run()
         {
-            int w = image.Width;
-            int h = image.Height;
+            byte[] buffer = _image.Bitmap;
+
+            // среднее значение цветов в кластерах
+            Color[] means = new Color[_clusters];
+            // вычисленное на данной итерации значение цветов в кластерах
+            Color[] new_means = new Color[_clusters];
 
 
-            // копирование массива битов
-            BitmapData image_data = image.LockBits(
-                new Rectangle(0, 0, w, h),
-                ImageLockMode.ReadOnly,
-                PixelFormat.Format24bppRgb);
-
-            int bytes = image_data.Stride * image_data.Height;
-            byte[] buffer = new byte[bytes];
-
-            Marshal.Copy(image_data.Scan0, buffer, 0, bytes);
-            image.UnlockBits(image_data);
-
-            // палитра
-            Color[] means = new Color[clusters];
-
-            // выделение случайных кластеров
-            for (int i = 0; i < clusters; i++)
+            // инициализация алгоритма
+            // выделение случайных средних значений для кластеров
+            for (int i = 0; i < _clusters; i++)
             {
                 Color init_mean = RGBColorCreator.GetRandomColor();
 
+                // значения не должны повторяться на начале алгоритма
                 while (means.Contains(init_mean))
                 {
                     init_mean = RGBColorCreator.GetRandomColor();
@@ -51,25 +39,32 @@ namespace grafic_lab2.Images.ColorExtracters
                 means[i] = init_mean;
             }
 
-            double error = 0;
             // цвета в кластере
-            List<Color>[] samples = new List<Color>[clusters];
+            List<Color>[] samples = new List<Color>[_clusters];
 
-            while (true)
+            // сумма расстояний между новым и старым значениями цветов
+            double error = 0;
+            bool isEnd = false;
+
+            while (!isEnd)
             {
-                for (int i = 0; i < clusters; i++)
+                // создание пустых кластеров
+                for (int i = 0; i < _clusters; i++)
                 {
                     samples[i] = new List<Color>();
                 }
 
-                for (int i = 0; i < bytes; i += 3)
+                // распределение пикселей по кластерам
+                for (int i = 0; i < buffer.Length; i += 3)
                 {
+                    // текущий пиксель
+                    Color cur = Color.FromArgb(buffer[i + 2], buffer[i + 1], buffer[i]);
+
                     double norm = double.MaxValue;
                     int cluster = 0;
 
-                    Color cur = Color.FromArgb(buffer[i + 2], buffer[i + 1], buffer[i]);
-
-                    for (int j = 0; j < clusters; j++)
+                    // цвет принадлежит к тому кластеру, у которого среднее значение цвета в кластере ближе к данному значению
+                    for (int j = 0; j < _clusters; j++)
                     {
                         double temp = Distance(means[j], cur);
 
@@ -83,38 +78,36 @@ namespace grafic_lab2.Images.ColorExtracters
                     samples[cluster].Add(cur);
                 }
 
-                Color[] new_means = new Color[clusters];
-
-                // подсчёт новых значений
-                for (int i = 0; i < clusters; i++)
+                // подсчёт новых значений цветов кластеров
+                for (int i = 0; i < _clusters; i++)
                 {
                     new_means[i] = Average(samples[i]);
                 }
 
                 double new_error = 0;
 
-                for (int i = 0; i < clusters; i++)
+                // вычисление суммы расстояния между новыми и старыми средними значениями кластеров
+                for (int i = 0; i < _clusters; i++)
                 {
                     new_error += Distance(means[i], new_means[i]);
                     means[i] = new_means[i];
                 }
 
-                if (Math.Abs(error - new_error) < 1)
-                {
-                    break;
-                }
-                else
-                {
-                    error = new_error;
-                }
+                // если особых изменений не произошло, то алгоритм заканчивает работу
+                isEnd = Math.Abs(error - new_error) < 1;
+
+                error = new_error;
             }
-            
+
             // результаты
+
+            // палитра состоит из средних значений кластеров
             Palette = means;
 
+            // словарь цвет - цвет из палитры
             CompressedColors = new Dictionary<Color, Color>();
 
-            for (int i = 0; i < clusters; i++)
+            for (int i = 0; i < _clusters; i++)
             {
                 for (int j = 0; j < samples[i].Count; j++)
                 {
@@ -123,6 +116,7 @@ namespace grafic_lab2.Images.ColorExtracters
             }
         }
 
+        // вычисление среднего статистического цвета
         private static Color Average(IList<Color> colors)
         {
             long red = 0, green = 0, blue = 0;
@@ -134,9 +128,12 @@ namespace grafic_lab2.Images.ColorExtracters
                 blue += colors[i].B;
             }
 
-            return Color.FromArgb((int)(red / (colors.Count + 1)), (int)(green / (colors.Count + 1)), (int)(blue / (colors.Count + 1)));
+            int count = colors.Count > 0 ? colors.Count : 1;
+
+            return Color.FromArgb((int)(red / count), (int)(green / count), (int)(blue / count));
         }
 
+        // Определение расстояние между цветами
         private static double Distance(Color first, Color second)
         {
             return Math.Sqrt(

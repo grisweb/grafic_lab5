@@ -7,66 +7,54 @@ namespace grafic_lab2.Images;
 
 public class PGSimage : IBitmatable
 {
-    public const string FileExtention = "pgs";
+    public const string FILE_EXTENSION = "pgs";
 
     // 4 байта
     public int Width { get; private set; }
     public int Height { get; private set; }
 
+    public const byte PIXEL_SIZE = 4;
+    public const byte COLOR_COUNT = 16;
+
     // чтоб прочитать
-    private byte pixelSize = 4;
-    private ushort colorsCount = 16;
+    private byte _pixelSize;
+    private ushort _colorsCount;
 
     private Color[][] _palate;
+
+    // упакованные пиксели
     private byte[] _data;
 
     private PGSimage() { }
 
     public Bitmap ToBitmap()
     {
-        var res = new Bitmap(Width, Height);
+        Bitmap res = new Bitmap(Width, Height, PixelFormat.Format32bppArgb);
 
+        int i = 0;
+        bool isFirstPart = true;
+        int pixel;
 
-        BitmapData image_data = res.LockBits(
-            new Rectangle(0, 0, Width, Height),
-            ImageLockMode.ReadOnly,
-            PixelFormat.Format24bppRgb);
-
-        int bytes = image_data.Stride * image_data.Height;
-        res.UnlockBits(image_data);
-
-        byte[] result = new byte[bytes];
-
-        int image_index = 0;
-
-        // проблема в декодировании
-
-        for (int i = 0; i < _data.Length; ++i)
+        for (int y = 0; y < res.Height; ++y)
         {
-            byte pixel = (byte)((_data[i] >> 4) & 15);
+            for (int x = 0; x < res.Width; ++x)
+            {
+                if (isFirstPart)
+                {
+                    pixel = (_data[i] >> 4) & 0b1111;
+                }
+                else
+                {
+                    pixel = _data[i] & 0b1111;
 
-            Color color = _palate[pixel >> 2][pixel & 3];
-            result[image_index++] = color.B;
-            result[image_index++] = color.G;
-            result[image_index++] = color.R;
+                    ++i;
+                }
 
-            pixel = (byte)(_data[i] & 15);
+                isFirstPart = !isFirstPart;
 
-            color = _palate[pixel >> 2][pixel & 3];
-            result[image_index++] = color.B;
-            result[image_index++] = color.G;
-            result[image_index++] = color.R;
+                res.SetPixel(x, y, _palate[pixel >> 2][pixel & 0b0011]);
+            }
         }
-
-
-        // формирование компрессионного изображения
-        BitmapData res_data = res.LockBits(
-            new Rectangle(0, 0, Width, Height),
-            ImageLockMode.WriteOnly,
-            PixelFormat.Format24bppRgb);
-
-        Marshal.Copy(result, 0, res_data.Scan0, bytes);
-        res.UnlockBits(res_data);
 
         return res;
     }
@@ -80,32 +68,31 @@ public class PGSimage : IBitmatable
             res.Width = reader.ReadInt32();
             res.Height = reader.ReadInt32();
 
-            res.pixelSize = reader.ReadByte();
+            res._pixelSize = reader.ReadByte();
 
-            if (res.pixelSize != 4)
+            if (res._pixelSize != PIXEL_SIZE)
             {
                 return null;
             }
 
-            res.colorsCount = reader.ReadUInt16();
+            res._colorsCount = reader.ReadUInt16();
 
-            if (res.colorsCount != 16)
+            if (res._colorsCount != COLOR_COUNT)
             {
                 return null;
             }
 
-            var palate = new Color[4][];
-
+            var pallete = new Color[4][];
             for (int i = 0; i < 4; i++)
             {
-                palate[i] = new Color[4];
+                pallete[i] = new Color[4];
             }
 
-            for (byte i = 0; i < palate.Length; i++)
+            for (byte i = 0; i < pallete.Length; i++)
             {
-                for (byte j = 0; j < palate[i].Length; j++)
+                for (byte j = 0; j < pallete[i].Length; j++)
                 {
-                    palate[i][j] = Color.FromArgb(
+                    pallete[i][j] = Color.FromArgb(
                         reader.ReadByte(),
                         reader.ReadByte(),
                         reader.ReadByte(),
@@ -113,45 +100,48 @@ public class PGSimage : IBitmatable
                 }
             }
 
-            res._palate = palate;
+            res._palate = pallete;
 
             //вычисление количества байтов в строке
-            int bytes = res.Width * res.Height / (8 / res.pixelSize);
+            int bytes = (res.Width * res.Height + 1) / 2;
             res._data = reader.ReadBytes(bytes);
 
             return res;
         }
     }
 
+
+    // починить количество бит
     public static PGSimage Create(BMP24image image)
     {
         PGSimage res = new PGSimage();
 
-        var bitmap = image.ToBitmap();
-
-        var compressor = new BitmapColorCompressor(bitmap, 16);
+        var compressor = new BMP24imageColorCompressor(image, COLOR_COUNT);
         compressor.Run();
         
         res._palate = MakePalette(compressor.Palette);
-        res._data = ToIndexesPixels(bitmap, res._palate, compressor.CompressedColors);
+        res._data = ToIndexesPixels(image, res._palate, compressor.CompressedColors);
 
-        res.Width = bitmap.Width;
-        res.Height = bitmap.Height;
+        res.Width = image.Width;
+        res.Height = image.Height;
+
+        res._pixelSize = PIXEL_SIZE;
+        res._colorsCount = COLOR_COUNT;
 
         return res;
     }
 
     public void Save(string pathFile)
     {
-        if (!pathFile.EndsWith(pathFile))
-            throw new ArgumentException("not siported file extantion");
+        if (!pathFile.EndsWith(FILE_EXTENSION))
+            throw new ArgumentException("not supported file extension");
 
         using (BinaryWriter writer = new BinaryWriter(File.Open(pathFile, FileMode.OpenOrCreate)))
         {
             writer.Write(Width);
             writer.Write(Height);
-            writer.Write(pixelSize);
-            writer.Write(colorsCount);
+            writer.Write(_pixelSize);
+            writer.Write(_colorsCount);
 
             for (byte i = 0; i < _palate.Length; i++)
             {
@@ -168,38 +158,48 @@ public class PGSimage : IBitmatable
         }
     }
 
-    private static byte[] ToIndexesPixels(Bitmap compressedBitmap, Color[][] palette, Dictionary<Color, Color> compressedColors)
+    private static byte[] ToIndexesPixels(BMP24image toConvert, Color[][] palette, Dictionary<Color, Color> compressedColors)
     {
-        var res = new byte[compressedBitmap.Width * compressedBitmap.Height / 2];
-
-        // копирование массива битов
-        BitmapData image_data = compressedBitmap.LockBits(
-            new Rectangle(0, 0, compressedBitmap.Width, compressedBitmap.Height),
-            ImageLockMode.ReadOnly,
-            PixelFormat.Format24bppRgb);
-
-        int bytes = image_data.Stride * image_data.Height;
-        byte[] buffer = new byte[bytes];
-
-        Marshal.Copy(image_data.Scan0, buffer, 0, bytes);
-        compressedBitmap.UnlockBits(image_data);
+        var res = new byte[(toConvert.Width * toConvert.Height + 1) / 2];
+        byte[] buffer = toConvert.Bitmap;
 
         var colorIndexes = CalcIndexes(palette, 2);
 
-        for (int pack_index = 0, image_index = 0; pack_index < res.Length; ++pack_index, image_index += 3)
+        bool isFirstPart = true;
+
+        byte doublePixel = 0;
+        int res_index = 0;
+
+        for (int y = 0; y < toConvert.Height; ++y)
         {
-            byte doublePixel = colorIndexes[compressedColors[Color.FromArgb(buffer[image_index + 2], buffer[image_index + 1], buffer[image_index])]];
-            image_index += 3;
+            for (int x = 0; x < toConvert.Width; ++x)
+            {
+                int image_index = (x + (toConvert.Height - 1 - y) * toConvert.Width) * 3;
 
-            doublePixel <<= 4;
-            doublePixel |= colorIndexes[compressedColors[Color.FromArgb(buffer[image_index + 2], buffer[image_index + 1], buffer[image_index])]]; ;
+                Color colorToCompres = Color.FromArgb(buffer[image_index + 2], buffer[image_index + 1], buffer[image_index]);
 
-            res[pack_index] = doublePixel;
+                if (isFirstPart)
+                {
+                    doublePixel = colorIndexes[compressedColors[colorToCompres]];
+                    doublePixel <<= 4;
+                }
+                else
+                {
+                    doublePixel |= colorIndexes[compressedColors[colorToCompres]];
+
+                    res[res_index] = doublePixel;
+                    
+                    ++res_index;
+                }
+
+                isFirstPart = !isFirstPart;
+            }
         }
 
         return res;
     }
 
+    // словарь цвет - упакованное положение в матрице
     private static Dictionary<Color, byte> CalcIndexes(Color[][] palate, byte offset)
     {
         var res = new Dictionary<Color, byte>();
@@ -215,7 +215,7 @@ public class PGSimage : IBitmatable
         return res;
     }
 
-
+    // создание двумерного массива из обычного
     private static Color[][] MakePalette(Color[] colors)
     {
         if (colors.Length < 16)
@@ -259,16 +259,16 @@ public class PGSimage : IBitmatable
             }
         }
 
-        var redSorter = new Comparison<Color>((Color first, Color second) => second.R.CompareTo(first.R));
-        var greenSorter = new Comparison<Color>((Color first, Color second) => second.G.CompareTo(first.G));
-        var blueSorter = new Comparison<Color>((Color first, Color second) => second.B.CompareTo(first.B));
-        var ortherSorter = new Comparison<Color>((Color first, Color second) => (second.R + second.G + second.B).CompareTo(first.R + first.G + first.B));
+        var redComparator = new Comparison<Color>((Color first, Color second) => second.R.CompareTo(first.R));
+        var greenComparator = new Comparison<Color>((Color first, Color second) => second.G.CompareTo(first.G));
+        var blueComparator = new Comparison<Color>((Color first, Color second) => second.B.CompareTo(first.B));
+        var ortherComparator = new Comparison<Color>((Color first, Color second) => (second.R + second.G + second.B).CompareTo(first.R + first.G + first.B));
 
 
-        red.Sort(redSorter);
-        green.Sort(greenSorter);
-        blue.Sort(blueSorter);
-        orther.Sort(ortherSorter);
+        red.Sort(redComparator);
+        green.Sort(greenComparator);
+        blue.Sort(blueComparator);
+        orther.Sort(ortherComparator);
 
         List<Color> toMove = new List<Color>();
 
@@ -277,10 +277,10 @@ public class PGSimage : IBitmatable
         RemoveLessSuitable(blue, toMove);
         RemoveLessSuitable(orther, toMove);
 
-        AddSuitable(red, redSorter, toMove);
-        AddSuitable(green, redSorter, toMove);
-        AddSuitable(blue, redSorter, toMove);
-        AddSuitable(orther, redSorter, toMove);
+        AddSuitable(red, redComparator, toMove);
+        AddSuitable(green, redComparator, toMove);
+        AddSuitable(blue, redComparator, toMove);
+        AddSuitable(orther, redComparator, toMove);
 
         return new Color[4][]
         {
@@ -291,11 +291,12 @@ public class PGSimage : IBitmatable
         };
     }
 
-    private static void AddSuitable(List<Color> colorFamaly, Comparison<Color> colorFamalySorter, List<Color> toMove)
+    // добавить при нехватке наиболее подходящие цвета
+    private static void AddSuitable(List<Color> colorFamaly, Comparison<Color> colorFamalyComparator, List<Color> toMove)
     {
         if (colorFamaly.Count < 4)
         {
-            toMove.Sort(colorFamalySorter);
+            toMove.Sort(colorFamalyComparator);
 
             while (colorFamaly.Count < 4)
             {
@@ -305,6 +306,7 @@ public class PGSimage : IBitmatable
         }
     }
 
+    // удалить при избыточности наименее подходящие цвета
     private static void RemoveLessSuitable(List<Color> colorFamaly, List<Color> toMove)
     {
         if (colorFamaly.Count > 4)
@@ -317,6 +319,4 @@ public class PGSimage : IBitmatable
             colorFamaly.RemoveRange(4, colorFamaly.Count - 4);
         }
     }
-
-
 }

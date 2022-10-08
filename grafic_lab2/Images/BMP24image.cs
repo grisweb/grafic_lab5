@@ -6,10 +6,18 @@ public class BMP24image : IBitmatable
 {
     private Header _header;
     private InforHeader _inforHeader;
-    private byte[] _data;
+
+    public byte[] Bitmap { get; private set; }
+    public int Width => (int)_inforHeader.ImgWidth;
+    public int Height => (int)_inforHeader.ImgHeight;
 
     private BMP24image() { }
 
+    /// <summary>
+    /// создать из файла
+    /// </summary>
+    /// <param name="filepath">путь</param>
+    /// <returns>объект BMP24image хранящий мета-информацию и битовую карту</returns>
     public static BMP24image Create(string filepath)
     {
         BMP24image res = new BMP24image();
@@ -18,46 +26,50 @@ public class BMP24image : IBitmatable
         {
             res._header.ReadFrom(br);
 
+            // проверка типа файле
             if (res._header.FileType == 0x4d42)
             {
-                res._inforHeader.ReadFrom(br);
-
-                //вычисление количества байтов в строке
-                int bytes = (int)(res._inforHeader.ImgWidth * (res._inforHeader.BitPerPixel / 8.0));
-
-                //вычисление количества "дополнительных" байтов
-                // выравнивание до 32 байт
-                int align = (4 * ((bytes + 3) / 4)) - bytes;
-
-                //определение размеров пиксельных данных и строки
-                res._data = new byte[res._inforHeader.BitPerPixel / 8 * (int)res._inforHeader.ImgWidth * (int)res._inforHeader.ImgHeight];
-
-                //цикл: последовательное считывание строк изображения
-                for (int line = 0; line < res._inforHeader.ImgHeight; line++)
-                {
-                    var scanline = br.ReadBytes(bytes);
-
-                    //если существует выравнивание
-                    if (align > 0)
-                    {
-                        br.ReadBytes(align);
-                    }
-
-                    scanline.CopyTo(res._data, line * bytes);
-                }
+                return null;
             }
-            else
+
+            res._inforHeader.ReadFrom(br);
+
+            if (res._inforHeader.BitPerPixel != 24)
             {
-                throw new InvalidDataException("это не bmp");
+                return null;
             }
-        }
 
-        return res;
+            //вычисление количества байтов в строке
+            int bytes = (int)(res._inforHeader.ImgWidth * 3);
+
+            //вычисление количества "дополнительных" байтов
+            // выравнивание до 32 бит (4 байт)
+            int align = (4 * ((bytes + 3) / 4)) - bytes;
+
+            //определение размеров пиксельных данных и строки
+            res.Bitmap = new byte[bytes * (int)res._inforHeader.ImgHeight];
+
+            //цикл: последовательное считывание строк изображения
+            for (int line = 0; line < res._inforHeader.ImgHeight; line++)
+            {
+                var scanline = br.ReadBytes(bytes);
+
+                //если существует выравнивание
+                if (align > 0)
+                {
+                    br.ReadBytes(align);
+                }
+
+                scanline.CopyTo(res.Bitmap, line * bytes);
+            }
+
+            return res;
+        } 
     }
 
     public Bitmap ToBitmap()
     {
-        Bitmap res = new Bitmap((int)_inforHeader.ImgWidth, (int)_inforHeader.ImgHeight);
+        Bitmap res = new Bitmap(Width, Height);
 
         for (int y = 0; y < res.Height; y++)
         {
@@ -65,14 +77,14 @@ public class BMP24image : IBitmatable
             {
                 int index = (x + (res.Height - 1 - y) * res.Width) * 3;
 
-                res.SetPixel(x, y, Color.FromArgb(_data[index + 2], _data[index + 1], _data[index]));
+                res.SetPixel(x, y, Color.FromArgb(Bitmap[index + 2], Bitmap[index + 1], Bitmap[index]));
             }
         }
 
         return res;
     }
 
-    public struct Header
+    private struct Header
     {
         public ushort FileType; //определяет сигнатуру файла
         public uint FileSize; //размер всего файла
@@ -90,7 +102,7 @@ public class BMP24image : IBitmatable
         }
     }
 
-    public struct InforHeader
+    private struct InforHeader
     {
         public uint StructSize; //размер этой структуры
         public uint ImgWidth; //ширина изображения в пикселях

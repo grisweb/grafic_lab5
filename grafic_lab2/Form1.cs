@@ -12,8 +12,8 @@ public partial class Form1 : Form
     {
         InitializeComponent();
 
-        openFileDialog1.Filter = $"Bitmap files (*.bmp)|*.bmp|MyImage files(*.{PGSimage.FileExtention})|*.{PGSimage.FileExtention}";
-        saveFileDialog1.Filter = $"MyImage files(*.{PGSimage.FileExtention})|*.{PGSimage.FileExtention}";
+        openFileDialog1.Filter = $"Bitmap files (*.bmp)|*.bmp|MyImage files(*.{PGSimage.FILE_EXTENSION})|*.{PGSimage.FILE_EXTENSION}";
+        saveFileDialog1.Filter = $"MyImage files(*.{PGSimage.FILE_EXTENSION})|*.{PGSimage.FILE_EXTENSION}";
     }
 
     private void Open_Click(object sender, EventArgs e)
@@ -34,7 +34,7 @@ public partial class Form1 : Form
 
             _isOpen = true;
         }
-        else if (filename.EndsWith(PGSimage.FileExtention))
+        else if (filename.EndsWith(PGSimage.FILE_EXTENSION))
         {
             _PGSimage = PGSimage.Create(filename);
 
