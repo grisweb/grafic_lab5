@@ -1,5 +1,4 @@
-﻿using grafic_lab2.Images.ColorExtracters;
-using System.Drawing.Imaging;
+﻿using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -112,24 +111,24 @@ public class PGSimage : IBitmatable
 
 
     // починить количество бит
-    public static PGSimage Create(BMP24image image)
-    {
-        PGSimage res = new PGSimage();
+    //public static PGSimage Create(BMP24image image)
+    //{
+    //    PGSimage res = new PGSimage();
 
-        var compressor = new BMP24imageColorCompressor(image, COLOR_COUNT);
-        compressor.Run();
+    //    var compressor = new BMP24imageColorCompressor(image, COLOR_COUNT);
+    //    compressor.Run();
         
-        res._palate = MakePalette(compressor.Palette);
-        res._data = ToIndexesPixels(image, res._palate, compressor.CompressedColors);
+    //    res._palate = MakePalette(compressor.Palette);
+    //    res._data = ToIndexesPixels(image, res._palate, compressor.CompressedColors);
 
-        res.Width = image.Width;
-        res.Height = image.Height;
+    //    res.Width = image.Width;
+    //    res.Height = image.Height;
 
-        res._pixelSize = PIXEL_SIZE;
-        res._colorsCount = COLOR_COUNT;
+    //    res._pixelSize = PIXEL_SIZE;
+    //    res._colorsCount = COLOR_COUNT;
 
-        return res;
-    }
+    //    return res;
+    //}
 
     public void Save(string pathFile)
     {
@@ -158,46 +157,46 @@ public class PGSimage : IBitmatable
         }
     }
 
-    private static byte[] ToIndexesPixels(BMP24image toConvert, Color[][] palette, Dictionary<Color, Color> compressedColors)
-    {
-        var res = new byte[(toConvert.Width * toConvert.Height + 1) / 2];
-        byte[] buffer = toConvert.Bitmap;
+    //private static byte[] ToIndexesPixels(BMP24image toConvert, Color[][] palette, Dictionary<Color, Color> compressedColors)
+    //{
+    //    var res = new byte[(toConvert.Width * toConvert.Height + 1) / 2];
+    //    byte[] buffer = toConvert.Bitmap;
 
-        var colorIndexes = CalcIndexes(palette, 2);
+    //    var colorIndexes = CalcIndexes(palette, 2);
 
-        bool isFirstPart = true;
+    //    bool isFirstPart = true;
 
-        byte doublePixel = 0;
-        int res_index = 0;
+    //    byte doublePixel = 0;
+    //    int res_index = 0;
 
-        for (int y = 0; y < toConvert.Height; ++y)
-        {
-            for (int x = 0; x < toConvert.Width; ++x)
-            {
-                int image_index = (x + (toConvert.Height - 1 - y) * toConvert.Width) * 3;
+    //    for (int y = 0; y < toConvert.Height; ++y)
+    //    {
+    //        for (int x = 0; x < toConvert.Width; ++x)
+    //        {
+    //            int image_index = (x + (toConvert.Height - 1 - y) * toConvert.Width) * 3;
 
-                Color colorToCompres = Color.FromArgb(buffer[image_index + 2], buffer[image_index + 1], buffer[image_index]);
+    //            Color colorToCompres = Color.FromArgb(buffer[image_index + 2], buffer[image_index + 1], buffer[image_index]);
 
-                if (isFirstPart)
-                {
-                    doublePixel = colorIndexes[compressedColors[colorToCompres]];
-                    doublePixel <<= 4;
-                }
-                else
-                {
-                    doublePixel |= colorIndexes[compressedColors[colorToCompres]];
+    //            if (isFirstPart)
+    //            {
+    //                doublePixel = colorIndexes[compressedColors[colorToCompres]];
+    //                doublePixel <<= 4;
+    //            }
+    //            else
+    //            {
+    //                doublePixel |= colorIndexes[compressedColors[colorToCompres]];
 
-                    res[res_index] = doublePixel;
+    //                res[res_index] = doublePixel;
                     
-                    ++res_index;
-                }
+    //                ++res_index;
+    //            }
 
-                isFirstPart = !isFirstPart;
-            }
-        }
+    //            isFirstPart = !isFirstPart;
+    //        }
+    //    }
 
-        return res;
-    }
+    //    return res;
+    //}
 
     // словарь цвет - упакованное положение в матрице
     private static Dictionary<Color, byte> CalcIndexes(Color[][] palate, byte offset)

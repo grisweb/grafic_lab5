@@ -30,18 +30,24 @@ public partial class Form1 : Form
         {
             var bit = BMP24image.Create(filename);
 
-            _PGSimage = PGSimage.Create(bit);
+            //_PGSimage = PGSimage.Create(bit);
 
-            _isOpen = true;
+            if(bit != null)
+            {
+                bit.ConvertToGray();
+                bit.Filter();
+                pictureBox1.Image = bit.ToBitmap();
+                _isOpen = true;
+            }
         }
         else if (filename.EndsWith(PGSimage.FILE_EXTENSION))
         {
             _PGSimage = PGSimage.Create(filename);
 
             _isOpen = true;
-        }
 
-        pictureBox1.Image = _PGSimage?.ToBitmap();
+            pictureBox1.Image = _PGSimage?.ToBitmap();
+        }
     }
 
     private void Save_Click(object sender, EventArgs e)
